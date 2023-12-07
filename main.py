@@ -11,9 +11,12 @@ if __name__ == "__main__":
 
   cmp = IdentityCompressor()
 
-  bin_encoding = cmp.compress(vid)
+  enc = cmp.compress(vid)
 
-  print(type(bin_encoding))
-  print(len(bin_encoding))
+  rec = cmp.decompress(enc)
 
+  print(type(enc))
+  print(len(enc))
+
+  print(rec.shape)
 

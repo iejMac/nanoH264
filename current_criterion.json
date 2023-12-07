@@ -1,0 +1,5 @@
+{
+  "compression_rate": 2.0,
+  "acceptable_error_rate": 0.2,
+  "epsilon": 20
+}
