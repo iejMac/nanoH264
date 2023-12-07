@@ -1,22 +1,14 @@
 import numpy as np
-from nanoH264 import IdentityCompressor
+from nanoH264 import VCmp
 from utils import play_video
 
 
 if __name__ == "__main__":
-  # Load test video
   vid = np.load("data/moving-mnist-1.npy")
-  print(vid.shape)
-  # play_video(vid, 256)
+  cmp = VCmp()
 
-  cmp = IdentityCompressor()
+  encoding = cmp.encode(vid)
 
-  enc = cmp.compress(vid)
+  reconstruction = cmp.decode(encoding)
 
-  rec = cmp.decompress(enc)
-
-  print(type(enc))
-  print(len(enc))
-
-  print(rec.shape)
-
+  play_video(reconstruction)

@@ -1,11 +1,10 @@
 import json
 import numpy as np
 
-# compressor
 from nanoH264 import BestCompressor
 
-# metrics
 from nanoH264 import Criterion
+from utils.logging import log_compression_report
 
 
 def test_compressor():
@@ -21,9 +20,7 @@ def test_compressor():
   rec = cmp.decompress(byte_enc)
 
   compression_report = crit(vid, byte_enc, rec)
-
-  # TODO: need better logging
-  print(compression_report)
+  log_compression_report(compression_report)
 
   for grade, p in compression_report['grades'].items():
     assert grade and p

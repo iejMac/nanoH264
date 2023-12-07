@@ -1,7 +1,6 @@
-import pprint
 import numpy as np
 
-from utils import serialize_array
+from utils.numpy_utils import serialize_array
 
 
 class Criterion:
