@@ -47,8 +47,6 @@ After the prediction phase we should have:
 ### Encoding
 We need to encode this stuff, not sure how yet
 
-
-
 ### Decoding
 Use prediciton coefficients and residuals to reconstruct data
 
