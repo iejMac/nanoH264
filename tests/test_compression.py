@@ -1,7 +1,7 @@
 import json
 import numpy as np
 
-from nanoH264 import BestCompressor
+from nanoH264 import BestCompressor, best_config
 
 from nanoH264 import Criterion
 from utils.logging import log_compression_report
@@ -14,7 +14,7 @@ def test_compressor():
 
   vid = np.load("data/moving-mnist-1.npy")
 
-  cmp = BestCompressor()
+  cmp = BestCompressor(**best_config)
 
   byte_enc = cmp.compress(vid)
   rec = cmp.decompress(byte_enc)

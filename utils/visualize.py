@@ -22,5 +22,5 @@ def play_video(videos, frame_size=256, wait_time=100):
 
 
 def visualize_residual(vid, rec):
-  residual = np.abs(vid - rec)
+  residual = ((vid - rec) / 2 + 127.5).astype(np.uint8)
   return residual
