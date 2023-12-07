@@ -2,11 +2,11 @@ import io
 import pickle
 import numpy as np
 
+from utils.metrics import compute_residual_energy
 from utils.numpy_utils import serialize_array, deserialize_array
 
 from .intra_prediction import IntraPredictionModel
 from .macroblocks import get_macroblocks
-from .metrics import compute_residual_energy
 
 
 class Compressor:

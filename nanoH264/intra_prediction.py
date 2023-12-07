@@ -1,6 +1,6 @@
 import numpy as np
 
-from .metrics import compute_residual_energy
+from utils.metrics import compute_residual_energy
 
 
 def prediction_mode(func):

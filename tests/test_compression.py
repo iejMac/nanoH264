@@ -3,8 +3,8 @@ import numpy as np
 
 from nanoH264 import BestCompressor, best_config
 
-from nanoH264 import Criterion
 from utils.logging import log_compression_report
+from utils.metrics import Criterion
 
 
 def test_compressor():
