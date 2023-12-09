@@ -34,17 +34,14 @@ prediction_type_enum = {
 
 
 class VCmp(Compressor):
-  def __init__(self, macroblock_size=16, energy_threshold=float('inf')):
+  def __init__(self, macroblock_size=16, temporal_range=1, spatial_range=2):
     self.macroblock_size = macroblock_size
-    self.energy_threshold = energy_threshold
-
-    # Low delay, minimal storage, 1-hierarhcy
-    self.lookback = 1  # for now can only look back one frame
 
     self.intra_model = IntraPredictionModel()
-    self.inter_model = InterPredictionModel(t_search_range=1, s_search_range=1)
+    # Low delay, minimal storage
+    self.inter_model = InterPredictionModel(t_search_range=temporal_range, s_search_range=spatial_range)
 
-  def encode(self, video, use_residual=True):
+  def encode(self, video):
     '''
     For now this will autoregressively in raster-scan order go over the macroblocks and try to 
     predict them based on past encoded macroblocsk
@@ -68,8 +65,8 @@ class VCmp(Compressor):
 
           # Select best prediction
           best_params, best_prediction, best_residual_energy = (intr_params, intr_prediction, intr_residual_energy) if intr_residual_energy <= inte_residual_energy else (inte_params, inte_prediction, inte_residual_energy)
-          if best_residual_energy > self.energy_threshold:  # safety (don't need if encoding residuals?)
-            best_params, best_prediction, best_residual_energy = {"type": "store", "code": curr_mb.content}, curr_mb.content, 0
+          if best_prediction is None:
+            best_params, best_prediction, best_residual_energy = {"type": "store", "code": 0}, 0, 0
 
           curr_mb.residual = curr_mb.content - best_prediction
           curr_mb.params = best_params
@@ -77,7 +74,7 @@ class VCmp(Compressor):
           encoding['body'].append({
             "pred_type": prediction_type_enum[best_params['type']],
             "code": best_params['code'],
-            "residual": curr_mb.residual if use_residual else 0,
+            "residual": curr_mb.residual,
           })
 
     return encoding
@@ -95,7 +92,7 @@ class VCmp(Compressor):
       prediction_type_code, code, residual = enc['pred_type'], enc['code'], enc['residual']
 
       if prediction_type_code == 0:  # store
-        curr_mb.content = code
+        curr_mb.content = -residual
       elif prediction_type_code == 1:  # intra
         intra_prediction = self.intra_model.decode_prediction(curr_mb, reco_mbs, code)
         prediction = intra_prediction + (residual if use_residual else 0)
