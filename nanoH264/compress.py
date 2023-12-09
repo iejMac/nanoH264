@@ -29,7 +29,7 @@ class Compressor:
 prediction_type_enum = {
   "store": 0,
   "intra": 1,
-  # TODO: "inter": 2,
+  "inter": 2,
 }
 
 
@@ -38,12 +38,11 @@ class VCmp(Compressor):
     self.macroblock_size = macroblock_size
     self.energy_threshold = energy_threshold
 
-    # Stuff for decoding/decompression
-    self.last_encode_shape = None
-    self.mb_array_byte_size = None
+    # Low delay, minimal storage, 1-hierarhcy
+    self.lookback = 1  # for now can only look back one frame
 
     self.intra_model = IntraPredictionModel()
-    self.inter_model = InterPredictionModel()
+    self.inter_model = InterPredictionModel(t_search_range=1, s_search_range=1)
 
   def encode(self, video, use_residual=True):
     '''
@@ -64,20 +63,20 @@ class VCmp(Compressor):
           curr_mb = macroblocks.grid[t][h][w]
 
           # TODO: maybe make this work at multiple macroblock size levels (check standard)
-          params, prediction, residual_energy = self.intra_model.best_prediction(curr_mb, macroblocks)
-          if not isinstance(prediction, np.ndarray):  # models weren't able to find a reference block
-            params, prediction = {"type": "store", "code": curr_mb.content}, curr_mb.content
+          intr_params, intr_prediction, intr_residual_energy = self.intra_model.get_prediction(curr_mb, macroblocks)
+          inte_params, inte_prediction, inte_residual_energy = self.inter_model.get_prediction(curr_mb, macroblocks)
 
-          # Select prediction method 
-          if params["type"] == "intra" and residual_energy > self.energy_threshold:
-            params, prediction = {"type": "store", "code": curr_mb.content}, curr_mb.content
+          # Select best prediction
+          best_params, best_prediction, best_residual_energy = (intr_params, intr_prediction, intr_residual_energy) if intr_residual_energy <= inte_residual_energy else (inte_params, inte_prediction, inte_residual_energy)
+          if best_residual_energy > self.energy_threshold:  # safety (don't need if encoding residuals?)
+            best_params, best_prediction, best_residual_energy = {"type": "store", "code": curr_mb.content}, curr_mb.content, 0
 
-          curr_mb.residual = curr_mb.content - prediction
-          curr_mb.params = params
+          curr_mb.residual = curr_mb.content - best_prediction
+          curr_mb.params = best_params
 
           encoding['body'].append({
-            "pred_type": prediction_type_enum[params['type']],
-            "code": params['code'],
+            "pred_type": prediction_type_enum[best_params['type']],
+            "code": best_params['code'],
             "residual": curr_mb.residual if use_residual else 0,
           })
 
@@ -100,6 +99,10 @@ class VCmp(Compressor):
       elif prediction_type_code == 1:  # intra
         intra_prediction = self.intra_model.decode_prediction(curr_mb, reco_mbs, code)
         prediction = intra_prediction + (residual if use_residual else 0)
+        curr_mb.content = prediction
+      elif prediction_type_code == 2:  # inter
+        inter_prediction = self.inter_model.decode_prediction(curr_mb, reco_mbs, code)
+        prediction = inter_prediction + (residual if use_residual else 0)
         curr_mb.content = prediction
       else:
         raise ValueError("Corrupted prediction type")

@@ -10,19 +10,20 @@ if __name__ == "__main__":
 
   cmp = VCmp(
     macroblock_size=4,
-    energy_threshold=1000,
+    energy_threshold=400,
   )
 
   # first one frame
-  vid = vid[:1]
+  vid = vid[:2]
+  use_residual = False
 
-  encoding = cmp.encode(vid)
-  code_types = [c['pred_type'] for c in encoding['body']]
+  encoding = cmp.encode(vid, use_residual)
+
+  # TODO: Maybe add some code for this type of viz
+  code_types = np.array([c['pred_type'] for c in encoding['body']]).reshape(vid.shape[0], 16, 16)
+
   print(code_types)
-  byte_stream = cmp.compress(vid)
-  print(len(serialize_array(vid))/len(byte_stream))
-
-  reconstruction = cmp.decode(encoding)
+  reconstruction = cmp.decode(encoding, use_residual)
 
   viz_vids = [vid, reconstruction]
   viz_vids.append(visualize_residual(vid, reconstruction))

@@ -20,7 +20,8 @@ class IntraPredictionModel:
       if callable(method) and hasattr(method, '_is_prediction_mode'):
         self._prediction_modes[name] = method.__get__(self, type(self))
 
-  def best_prediction(self, curr_mb, mbs):
+  def get_prediction(self, curr_mb, mbs):
+    """Returns best prediction for current macroblock."""
     min_residual_energy, min_params, min_prediction = float('inf'), {}, None
 
     for k, mode in self._prediction_modes.items():
