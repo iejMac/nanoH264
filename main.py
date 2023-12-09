@@ -9,18 +9,18 @@ if __name__ == "__main__":
   vid = np.load("data/moving-mnist-1.npy")
 
   cmp = VCmp(
-    macroblock_size=8,
-    energy_threshold=400,
+    macroblock_size=4,
+    energy_threshold=1000,
   )
 
   # first one frame
   vid = vid[:1]
 
   encoding = cmp.encode(vid)
-  code_types = [t for t, c in encoding]
+  code_types = [c['pred_type'] for c in encoding['body']]
   print(code_types)
-  byte_encoding = cmp.compress(vid)
-  print(len(serialize_array(vid))/len(byte_encoding))
+  byte_stream = cmp.compress(vid)
+  print(len(serialize_array(vid))/len(byte_stream))
 
   reconstruction = cmp.decode(encoding)
 

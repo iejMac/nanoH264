@@ -6,6 +6,7 @@ from utils.metrics import compute_residual_energy
 from utils.numpy_utils import serialize_array, deserialize_array
 
 from .intra_prediction import IntraPredictionModel
+from .inter_prediction import InterPredictionModel
 from .macroblocks import get_macroblocks
 
 
@@ -37,11 +38,14 @@ class VCmp(Compressor):
     self.macroblock_size = macroblock_size
     self.energy_threshold = energy_threshold
 
+    # Stuff for decoding/decompression
     self.last_encode_shape = None
+    self.mb_array_byte_size = None
 
     self.intra_model = IntraPredictionModel()
+    self.inter_model = InterPredictionModel()
 
-  def encode(self, video):
+  def encode(self, video, use_residual=True):
     '''
     For now this will autoregressively in raster-scan order go over the macroblocks and try to 
     predict them based on past encoded macroblocsk
@@ -49,7 +53,10 @@ class VCmp(Compressor):
     macroblocks = get_macroblocks(video, self.macroblock_size)
     T, H, W = macroblocks.shape
 
-    encoding = []
+    encoding = {
+      "header": (T, H, W, self.macroblock_size),
+      "body": [],
+    }
 
     for t in range(T):  # TODO: implement inter prediction
       for h in range(H):
@@ -68,34 +75,31 @@ class VCmp(Compressor):
           curr_mb.residual = curr_mb.content - prediction
           curr_mb.params = params
 
-          # encoding.append([prediction_type_enum[params['type']], params['code'], curr_mb.residual])
-          # TODO: lets see if no-residual can work fine
-          encoding.append([prediction_type_enum[params['type']], params['code']])
+          encoding['body'].append({
+            "pred_type": prediction_type_enum[params['type']],
+            "code": params['code'],
+            "residual": curr_mb.residual if use_residual else 0,
+          })
 
-    # TODO: this needs to be compressed in some type of header
-    self.last_encode_shape = macroblocks.shape  # save for decode
     return encoding
 
-  def decode(self, encodings):
-    T, H, W = self.last_encode_shape
-    reco_video = np.zeros((T, H * self.macroblock_size, W * self.macroblock_size))
+  def decode(self, encoding, use_residual=True):
+    T, H, W, mb_size = encoding['header']
+    reco_video = np.zeros((T, H * self.macroblock_size, W * mb_size))
     reco_mbs = get_macroblocks(reco_video, self.macroblock_size)
 
-    for i, enc in enumerate(encodings):
+    mb_encodings = encoding['body']
+    for i, enc in enumerate(mb_encodings):
       t, h, w = i // (H * W), (i % (H * W)) // W, i % W
       curr_mb = reco_mbs.grid[t][h][w]
 
-      # TODO: lets see if no-residual can work fine
-      prediction_type_code, code = enc
-      # prediction_type_code, code, residual = enc
+      prediction_type_code, code, residual = enc['pred_type'], enc['code'], enc['residual']
 
       if prediction_type_code == 0:  # store
         curr_mb.content = code
       elif prediction_type_code == 1:  # intra
         intra_prediction = self.intra_model.decode_prediction(curr_mb, reco_mbs, code)
-        # prediction = intra_prediction + residual
-        # TODO: lets see if no-residual can work fine
-        prediction = intra_prediction
+        prediction = intra_prediction + (residual if use_residual else 0)
         curr_mb.content = prediction
       else:
         raise ValueError("Corrupted prediction type")
